@@ -18,7 +18,7 @@ public class MCSLock implements Lock {
 
             while (node.locked) {
                 // wait until predecessor says I can continue
-                // Thread.onWaitSpin();
+                Thread.onSpinWait();
             }
         }
     }

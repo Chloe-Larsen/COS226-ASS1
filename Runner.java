@@ -4,14 +4,16 @@ import java.util.Random;
 /* Optional Helper Runner Class */
 public class Runner {
 
+    private static boolean DEBUG_PRINTS = false;
+
     public final int numberOfThreads;
     public final int iterations;
     public final Auction auction;
     public final Lock lock;
 
-    //bid 
+    // bid
     private final AtomicLong attempts = new AtomicLong(0);
-    private final AtomicLong successes = new AtomicLong(0); 
+    private final AtomicLong successes = new AtomicLong(0);
     private final AtomicLong[] bidsWon;
     private final AtomicLong[] waitNanos;
 
@@ -22,10 +24,10 @@ public class Runner {
         this.iterations = iterations;
         this.auction = auction;
         this.lock = lock;
-        this.bidsWon   = new AtomicLong[numberOfThreads];
+        this.bidsWon = new AtomicLong[numberOfThreads];
         this.waitNanos = new AtomicLong[numberOfThreads];
         for (int i = 0; i < numberOfThreads; i++) {
-            bidsWon[i]   = new AtomicLong(0);
+            bidsWon[i] = new AtomicLong(0);
             waitNanos[i] = new AtomicLong(0);
         }
 
@@ -62,31 +64,37 @@ public class Runner {
      * Note you have to decide how to incorporate your lock.
      */
     public void bidder(int bidderId) {
-        
-        Random rnd = new Random(bidderId * 31L + 17);   //this makes a diffferent seed for each bidder avoiding two random objects having the same one 
 
-        for (int i = 0; i < iterations; i++)
-        {
+        Random rnd = new Random(bidderId * 31L + 17); // this makes a diffferent seed for each bidder avoiding two
+                                                      // random objects having the same one
+
+        for (int i = 0; i < iterations; i++) {
             double current = auction.getHighestBid();
-            double newBid = current +1 + rnd.nextInt(10);
+            double newBid = current + 1 + rnd.nextInt(10);
 
             long t0 = System.nanoTime();
 
+            if (DEBUG_PRINTS)
+                System.out.println(Thread.currentThread().threadId() + " | AQUIRING LOCK");
             lock.lock();
+            if (DEBUG_PRINTS)
+                System.out.println(Thread.currentThread().threadId() + " | AQUIRED LOCK");
+
             try {
                 long t1 = System.nanoTime();
                 waitNanos[bidderId].addAndGet(t1 - t0);
-                totalWaitingTime.addAndGet(t1-t0);
-                
+                totalWaitingTime.addAndGet(t1 - t0);
+
                 auction.placeBid(bidderId, newBid);
 
-                if (auction.getHighestBidder() == bidderId)
-                {
+                if (auction.getHighestBidder() == bidderId) {
                     bidsWon[bidderId].incrementAndGet();
                     successes.incrementAndGet();
                 }
                 attempts.incrementAndGet();
-            }finally {
+            } finally {
+                if (DEBUG_PRINTS)
+                    System.out.println(Thread.currentThread().threadId() + " | RELEASING LOCK");
                 lock.unlock();
             }
         }
@@ -94,7 +102,7 @@ public class Runner {
 
     /* Optional Helper: Records and reports the results of the experiment. */
     public void reportResults(long executionTime) {
-        
+
         long expected = (long) numberOfThreads * iterations;
 
         System.out.println("Results:");
@@ -111,19 +119,21 @@ public class Runner {
         System.out.println("Highest bidder id    : " + auction.getHighestBidder());
         System.out.println();
 
-        //fairness 
+        // fairness
         System.out.println("Bids won per bidder:");
         long min = Long.MAX_VALUE, max = Long.MIN_VALUE;
         for (int i = 0; i < numberOfThreads; i++) {
             long w = bidsWon[i].get();
             System.out.printf("     bidder %2d : %d%n", i, w);
-            if (w < min) min = w;
-            if (w > max) max = w;
+            if (w < min)
+                min = w;
+            if (w > max)
+                max = w;
         }
         System.out.printf("Fairness spread (max-min wins): %d%n", max - min);
         System.out.println();
 
-        //average wait to acquire lock
+        // average wait to acquire lock
         System.out.println("Average wait to acquire lock (ns):");
         long totalWait = 0;
         for (int i = 0; i < numberOfThreads; i++) {
@@ -134,8 +144,8 @@ public class Runner {
         System.out.printf("Overall average wait : %d ns%n", totalWait / numberOfThreads);
         System.out.println();
 
-        long totalAcquisitions = (long) numberOfThreads *iterations;
-        long avgWaitAcquisition = totalWaitingTime.get() /totalAcquisitions;
+        long totalAcquisitions = (long) numberOfThreads * iterations;
+        long avgWaitAcquisition = totalWaitingTime.get() / totalAcquisitions;
 
         System.out.println("Total waiting time           : " + totalWaitingTime.get() + " ns");
         System.out.println("Avg wait per lock acquisition: " + avgWaitAcquisition + " ns");

@@ -16,7 +16,7 @@ public class CLHLock implements Lock {
         myPred.set(pred);
 
         while (pred.locked) {
-            // Thread.onWaitSpin();
+            Thread.onSpinWait();
         }
     }
 
