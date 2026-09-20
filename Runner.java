@@ -65,6 +65,7 @@ public class Runner {
                 long t1 = System.nanoTime();
                 waitNanos[bidderId].addAndGet(t1-t0);
 
+                //crit
                 double current = auction.getHighestBid();
                 double increment = 1 + rnd.nextInt(10);     //positive
                 double newBid = current + increment;        //higher
@@ -76,6 +77,7 @@ public class Runner {
                 {
                     bidsWon[bidderId].incrementAndGet();
                 }
+                //eo crit
             }finally {
                 lock.unlock();
             }
@@ -84,6 +86,61 @@ public class Runner {
 
     /* Optional Helper: Records and reports the results of the experiment. */
     public void reportResults(long executionTime) {
-        // TODO
+        
+        long expected = (long) numberOfThreads * iterations;    //brackets are casting
+        long actual = totalBidsPlaced.get()
+
+        System.out.println("Results: ");
+
+        System.out.println("Lock        : " + lock.getClass().getSimpleName());
+        System.out.println("Item        : " + auction.getItemName());
+        System.out.println("Threads     : " + numberOfThreads);
+        System.out.println("Iterations  : " + iterations);
+        
+        System.out.println();
+        
+        System.out.printf("Execution time       : %.3f ms%n", executionTimeNanos / 1e6);    //%. is a placeholder, %n newline, the conversion to miliseconds
+        System.out.printf("Total bids placed    : %sd (expected %d)%n" actual, expected);   //%d decimal integer
+        System.out.println("Highest bidder id : " + auction.getHighestBidder());
+
+        System.out.println();
+        //fairness test
+
+        System.out.println("Bids won per bidder: ");
+        long min Long.MAX_VALUE, max = Long.MIN_VALUE;
+        for (int i = 0; i < numberOfThreads; i++) {
+            long w = bidsWon[i].get();
+            System.out.printf("     bidder %2d : %d%n", i,w);
+            if (w < min)
+            {
+                min = w;
+            }
+            if (w > max)
+            {
+                max = w;
+            }
+
+        }
+        System.out.printf("Fairness spread (max-min wins): %d%n", (max-min));
+
+        System.out.println();
+        //extra metric: 
+
+        long totalWait = 0; 
+
+        System.out.println("Average wait to acquire lock in nanoseconds:");
+        for (int i = 0; i < numberOfThreads; i++){
+            long avg = waitNanos[i].get() / iterations;
+            totalWait += avg;
+            System.out.printf("         bidder %2d : %d%n", i, avg);
+        }
+        System.out.printf("Overall average wait : %d ns%n", totalWait/numberOfThreads);
+
+        System.out.println();
+
+        if (actual != expected)
+        {
+            System.out.println("Mutual exclusion has been broken as the actual waiting time was not what was expected")
+        }
     }
 }
