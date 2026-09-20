@@ -32,6 +32,6 @@ public class CLHLock implements Lock {
     }
 
     class Node {
-        boolean locked;
+        volatile boolean locked;
     }
 }

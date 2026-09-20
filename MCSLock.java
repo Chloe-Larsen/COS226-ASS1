@@ -42,7 +42,7 @@ public class MCSLock implements Lock {
     }
 
     class Node {
-        boolean locked;
+        volatile boolean locked;
         Node next;
     }
 }
