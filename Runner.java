@@ -8,6 +8,11 @@ public class Runner {
     public final Auction auction;
     public final Lock lock;
 
+    //bid 
+    private final AtomicLong totalBidsPlaced = new AtomicLong(0);
+    private final AtomicLong[] bidsWon; //per bidder
+    private final AtomicLong[] waitNanos;//time waiting for lock
+
     private final AtomicLong totalWaitingTime = new AtomicLong(0);
 
     public Runner(int numberOfThreads, int iterations, Auction auction, Lock lock) {
@@ -48,7 +53,33 @@ public class Runner {
      * Note you have to decide how to incorporate your lock.
      */
     public void bidder(int bidderId) {
-        // TODO
+        
+        Random rnd = new Random(bidderId * 31L + 17);   //this makes a diffferent seed for each bidder avoiding two random objects having the same one 
+
+        for (int i = 0; i < iterations; i++)
+        {
+            long t0 = System.nanoTime();
+
+            lock.lock();
+            try {
+                long t1 = System.nanoTime();
+                waitNanos[bidderId].addAndGet(t1-t0);
+
+                double current = auction.getHighestBid();
+                double increment = 1 + rnd.nextInt(10);     //positive
+                double newBid = current + increment;        //higher
+
+                auction.placeBid(bidderId, newBid);
+                totalBidsPlaced.incrementAndGet();
+
+                if (auction.getHighestBidder() == bidderId)
+                {
+                    bidsWon[bidderId].incrementAndGet();
+                }
+            }finally {
+                lock.unlock();
+            }
+        }
     }
 
     /* Optional Helper: Records and reports the results of the experiment. */
